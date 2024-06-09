@@ -1,110 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Websocket test</title>
+  </head>
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Websocket test</title>
-</head>
-
-<body>
-  <h1>Websocket test</h1>
-  <div>
-    <div class="form">
-      <input type="text" id="msg" autofocus placeholder="Enter message">
-      <button id="send-msg">Send</button>
-    </div>
+  <body>
+    <h1>Websocket test</h1>
     <div>
-      <pre id="output"></pre>
+      <div class="form">
+        <input type="text" id="msg" autofocus placeholder="Enter message" />
+        <button id="send-msg">Send</button>
+      </div>
+      <div>
+        <pre id="output"></pre>
+      </div>
     </div>
-  </div>
-</body>
+  </body>
 
-<script>
-  const msg = document.getElementById("msg");
-  const sendMsg = document.getElementById("send-msg");
-  const output = document.getElementById("output");
+  <script>
+    const msg = document.getElementById("msg");
+    const sendMsg = document.getElementById("send-msg");
+    const output = document.getElementById("output");
 
-  const websocket = new WebSocket("ws://192.168.1.2:3000/echo")
-  websocket.onopen = function () {
-    const message = "Conexion establecida";
-    console.log(message);
-    // websocket.send(message);
-  }
-  websocket.onmessage = function (event) {
-    const message = event.data;
-    if (message) {
-      output.innerText += `${message}\n`;
+    const websocket = new WebSocket("ws://localhost:3000/echo");
+    websocket.onopen = function () {
+      const message = "Conexion establecida";
+      console.log(message);
+      // websocket.send(message);
+    };
+    websocket.onmessage = function (event) {
+      const message = event.data;
+      if (message) {
+        output.innerText += `${message}\n`;
+      }
+    };
+
+    sendMsg.addEventListener("click", function () {
+      if (websocket.readyState === websocket.CLOSED)
+        return window.alert("Connection is clossed");
+      const message = msg.value;
+      if (message) {
+        websocket.send(message);
+        msg.value = "";
+        return;
+      }
+    });
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
     }
-  }
 
-  sendMsg.addEventListener("click", function () {
-    if (websocket.readyState === websocket.CLOSED) return window.alert("Connection is clossed")
-    const message = msg.value;
-    if (message) {
-      websocket.send(message)
-      msg.value = ""
-      return;
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+
+      font-family: sans-serif;
+      color: #fff;
+      background-color: #2d2d2f;
     }
-  })
-</script>
 
-<style>
-  * {
-    box-sizing: border-box;
-  }
-
-  body {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-
-    font-family: sans-serif;
-    color: #fff;
-    background-color: #2d2d2f;
-  }
-
-  h1 {
-    font-size: 3rem;
-  }
-
-  .form {
-    width: min(90vw, 1000px, 59vw);
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  input,
-  button {
-    flex-basis: 50px;
-    flex-grow: 1;
-    flex-shrink: 0;
-    min-width: 100px;
-    padding: 8px;
-    font-size: 1rem;
-    border: none;
-    outline: none;
-    border-radius: 12px;
-  }
-
-  #output {
-    min-height: 100px;
-    width: 100%;
-    padding: 12px;
-    font-family: "Fira Code", "Cascadia Code", consolas;
-    color: #2d2d2f;
-    background-color: #0099ff;
-    border-radius: 12px;
-  }
-
-  @media only screen and (max-width: 600px) {
     h1 {
-      font-size: 1.8rem;
+      font-size: 3rem;
     }
-  }
-</style>
 
+    .form {
+      width: min(90vw, 1000px, 59vw);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    input,
+    button {
+      flex-basis: 50px;
+      flex-grow: 1;
+      flex-shrink: 0;
+      min-width: 100px;
+      padding: 8px;
+      font-size: 1rem;
+      border: none;
+      outline: none;
+      border-radius: 12px;
+    }
+
+    #output {
+      min-height: 100px;
+      width: 100%;
+      padding: 12px;
+      font-family: "Fira Code", "Cascadia Code", consolas;
+      color: #2d2d2f;
+      background-color: #0099ff;
+      border-radius: 12px;
+    }
+
+    @media only screen and (max-width: 600px) {
+      h1 {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
 </html>
