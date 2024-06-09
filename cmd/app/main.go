@@ -1,27 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
+	"gowebsocketauth/internal/fileutils"
+	"gowebsocketauth/internal/types"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/gorilla/websocket"
 )
-
-/* ------------------------------------------------------ */
-
-type User struct {
-	Username string
-	Password string
-}
-
-type Session struct {
-	User User
-	Conn *websocket.Conn
-}
 
 /* ------------------------------------------------------ */
 
@@ -41,21 +29,12 @@ NOTE: It's important to remove the client connection once it's closed. It is als
 */
 
 var clients []*websocket.Conn
-var sessions []*Session
-var users []User = []User{
-	{
-		Username: "alvaro",
-		Password: "alvaro123",
-	},
-	{
-		Username: "mononon",
-		Password: "123",
-	},
-}
+var sessions []*types.Session
+var users []types.User
 
 /* ------------------------------------------------------ */
 
-func closeSession(session *Session) error {
+func closeSession(session *types.Session) error {
 	for i, eachSession := range sessions {
 		if eachSession == session {
 			// Removing session from slice
@@ -93,7 +72,7 @@ func closeClient(clientConn *websocket.Conn) error {
 
 /* ------------------------------------------------------ */
 
-func findSessionPerConn(cliConn *websocket.Conn) *Session {
+func findSessionPerConn(cliConn *websocket.Conn) *types.Session {
 	for _, eachSession := range sessions {
 		if eachSession.Conn == cliConn {
 			return eachSession
@@ -102,7 +81,7 @@ func findSessionPerConn(cliConn *websocket.Conn) *Session {
 	return nil
 }
 
-func findSessionPerUsrname(usrname string) *Session {
+func findSessionPerUsrname(usrname string) *types.Session {
 	for _, eachSession := range sessions {
 		if eachSession.User.Username == usrname {
 			return eachSession
@@ -116,6 +95,17 @@ func findSessionPerUsrname(usrname string) *Session {
 func authenticate(usrname string, passwd string) bool {
 	for _, eachUser := range users {
 		if eachUser.Username == usrname && eachUser.Password == passwd {
+			return true
+		}
+	}
+	return false
+}
+
+/* ------------------------------------------------------ */
+
+func usrExists(usrname string) bool {
+	for _, eachUser := range users {
+		if eachUser.Username == usrname {
 			return true
 		}
 	}
@@ -208,7 +198,7 @@ func main() {
 
 							// Adds a new session if auth
 							if auth {
-								newSession := &Session{Conn: conn, User: User{Username: usrname, Password: password}}
+								newSession := &types.Session{Conn: conn, User: types.User{Username: usrname, Password: password}}
 								sessions = append(sessions, newSession)
 								if err := conn.WriteMessage(websocket.TextMessage, []byte("Logged as "+usrname)); err != nil {
 									fmt.Println(err)
@@ -218,12 +208,12 @@ func main() {
 								var errWhenWritingMsg error = nil
 								for _, client := range clients {
 									if err := client.WriteMessage(websocket.TextMessage, []byte(usrname+" joined to the server")); err != nil {
-										fmt.Println(err)
 										errWhenWritingMsg = err
 									}
 								}
 								// Closes all connections with clients in case there was an error sending to each client the joining message
 								if errWhenWritingMsg != nil {
+									fmt.Println(errWhenWritingMsg)
 									break
 								}
 							} else {
@@ -232,9 +222,7 @@ func main() {
 									break
 								}
 							}
-
 						}
-
 					}
 				} else if command == "logout" {
 					currentSession := findSessionPerConn(conn)
@@ -249,12 +237,12 @@ func main() {
 						var errWhenWritingMsg error = nil
 						for _, cliConn := range clients {
 							if err := cliConn.WriteMessage(websocket.TextMessage, []byte(currentSession.User.Username+" left the server")); err != nil {
-								fmt.Println(err)
 								errWhenWritingMsg = err
 							}
 						}
 						// Closes all connections with clients in case there was an error sending to each client the joining message
 						if errWhenWritingMsg != nil {
+							fmt.Println(errWhenWritingMsg)
 							break
 						}
 
@@ -274,6 +262,69 @@ func main() {
 					if err := conn.WriteMessage(websocket.TextMessage, []byte(responseMessage)); err != nil {
 						fmt.Println(err)
 						break
+					}
+				} else if strings.Split(command, " ")[0] == "register" {
+					currentSession := findSessionPerConn(conn)
+					if currentSession != nil {
+						if err := conn.WriteMessage(websocket.TextMessage, []byte("Session already active")); err != nil {
+							fmt.Println(err)
+							break
+						}
+					} else {
+						// The client hasn't any session active
+						args := strings.Split(command, " ")
+						if len(args) != 3 {
+							if err := conn.WriteMessage(websocket.TextMessage, []byte("Invalid command")); err != nil {
+								fmt.Println(err)
+								break
+							}
+						} else {
+							// Creates the new user and appends it into the clients slice
+							usrname := args[1]
+							passwd := args[2]
+
+							if usrExists(usrname) {
+								if err := conn.WriteMessage(websocket.TextMessage, []byte("User already exists")); err != nil {
+									fmt.Println(err)
+									break
+								}
+							} else {
+								newUser := types.User{
+									Username: usrname,
+									Password: passwd,
+								}
+								users = append(users, newUser)
+
+								// Informs the client about the new user
+								if err := conn.WriteMessage(websocket.TextMessage, []byte(usrname+" was registered")); err != nil {
+									fmt.Println(err)
+									break
+								}
+
+								// Logs the usr in automatically
+								newSession := &types.Session{
+									User: newUser,
+									Conn: conn,
+								}
+								sessions = append(sessions, newSession)
+
+								if err := conn.WriteMessage(websocket.TextMessage, []byte("Logged as "+usrname)); err != nil {
+									fmt.Println(err)
+									break
+								}
+
+								var errWhenWritingMsg error = nil
+								for _, cliConn := range clients {
+									if err := cliConn.WriteMessage(websocket.TextMessage, []byte(usrname+" joined to the server")); err != nil {
+										errWhenWritingMsg = err
+									}
+								}
+								if errWhenWritingMsg != nil {
+									fmt.Println(errWhenWritingMsg)
+									break
+								}
+							}
+						}
 					}
 				} else {
 					// The command doesn't exist
@@ -307,18 +358,10 @@ func main() {
 	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		file, err := os.Open("./views/index.html")
+		w.Header().Set("Content-Type", "text/html") // <-- Establishes mime type
+		html, err := fileutils.ReadFile("./internal/fileutils/views/index.html")
 		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		defer file.Close()
-		scanner := bufio.NewScanner(file)
-
-		var html string = ""
-		for scanner.Scan() {
-			html += scanner.Text() + "\n"
+			panic(err)
 		}
 		fmt.Fprint(w, html)
 	})

@@ -1,4 +1,4 @@
-module websocketest
+module gowebsocketauth
 
 go 1.18
 
