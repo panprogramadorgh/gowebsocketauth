@@ -254,15 +254,24 @@ func main() {
 						}
 					}
 				} else if command == "sessions" {
-					// Lists all the sessions
-					responseMessage := "Sessions:\n"
-					for _, eachSession := range sessions {
-						responseMessage += fmt.Sprintf("%v - %v\n", eachSession.User.Username, eachSession.Conn.RemoteAddr())
+					if len(sessions) < 1 {
+						if err := conn.WriteMessage(websocket.TextMessage, []byte("There aren't any sessions active")); err != nil {
+							fmt.Println(err)
+							break
+						}
+					} else {
+						// Lists all the sessions
+						responseMessage := "Sessions:\n"
+						for _, eachSession := range sessions {
+							responseMessage += fmt.Sprintf("%v - %v\n", eachSession.User.Username, eachSession.Conn.RemoteAddr())
+						}
+						if err := conn.WriteMessage(websocket.TextMessage, []byte(responseMessage)); err != nil {
+							fmt.Println(err)
+							break
+						}
+
 					}
-					if err := conn.WriteMessage(websocket.TextMessage, []byte(responseMessage)); err != nil {
-						fmt.Println(err)
-						break
-					}
+
 				} else if strings.Split(command, " ")[0] == "register" {
 					currentSession := findSessionPerConn(conn)
 					if currentSession != nil {
@@ -364,6 +373,15 @@ func main() {
 			panic(err)
 		}
 		fmt.Fprint(w, html)
+	})
+
+	http.HandleFunc("/main.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "script") // <-- Establishes mime type
+		javascript, err := fileutils.ReadFile("./internal/fileutils/views/main.js")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Fprint(w, javascript)
 	})
 
 	fmt.Println("Server running on 3000")
