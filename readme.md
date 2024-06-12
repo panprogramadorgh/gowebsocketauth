@@ -36,13 +36,13 @@ Con todo esto podremos acceder al servidor a traves del puerto 3000 en el domini
 
 Para que el servidor websocket interprete un mensaje como un comando hemos de colocar una barra ascendente al principio de cualquier comando.
 
-- /register <usuario> <contraseña> : registra un nuevo usuario y hace login automaticamente
+- /register `usuario` `contraseña` : registra un nuevo usuario y hace login automaticamente
 
-- /login <usuario> <contraseña> : hace login a nombre de un usuario especifico
+- /login `usuario` `contraseña` : hace login a nombre de un usuario especifico
 
 - /logout : cierra la sesion actual (si es que la hay)
 
-- /murder <usuario> <contraseña> : elimina una cuenta de usuario (debemos indicar la contraseña por claros motivos de seguridad)
+- /murder `usuario` `contraseña` : elimina una cuenta de usuario (debemos indicar la contraseña por claros motivos de seguridad)
 
 - /whoami : el servidor te informa sobre a nombre de que usuario estas logeado
 
@@ -50,6 +50,6 @@ Para que el servidor websocket interprete un mensaje como un comando hemos de co
 
 - /list : muestra una lista con todos los clientes (conexiones con el servidor)
 
-- /tell <usurio> <mensaje> : enviar mensajes privados a otro usuario
+- /tell `usuario` `mensaje` : enviar mensajes privados a otro usuario
 
 - /exit : cierra la conexion (y sesion si la hay) con el sevidor (recargar el cliente para obtener conexion de nuevo)
