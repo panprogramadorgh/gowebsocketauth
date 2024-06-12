@@ -29,7 +29,12 @@ NOTE: It's important to remove the client connection once it's closed. It is als
 
 var clients types.Clients
 var sessions types.Sessions
-var users types.Users
+var users types.Users = types.Users{
+	{
+		Username: "server",
+		Password: "revres",
+	},
+}
 
 func main() {
 	http.HandleFunc("/echo", WsHandler)

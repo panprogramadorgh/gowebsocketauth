@@ -12,6 +12,7 @@ import (
 type CmdOutputStatus struct {
 	PrivateMessage int
 	PublicMessage  int
+	RemoveClient   int
 	Error          int
 }
 
@@ -113,9 +114,9 @@ func (clients Clients) GetClients() string {
 	if len(clients) < 1 {
 		return "there aren't any clients"
 	}
-	outputmsg := "connected clients:\n"
+	outputmsg := "clients:\n"
 	for _, eachClient := range clients {
-		outputmsg += fmt.Sprintf("%v\n", (**eachClient).RemoteAddr())
+		outputmsg += fmt.Sprintf("%v\n", (**eachClient).RemoteAddr().String())
 	}
 	return outputmsg
 }
@@ -130,28 +131,45 @@ func (clients *Clients) AddCli(cli *Client) error {
 	}
 }
 
-func (clients *Clients) RmCli(cli *Client, sessions *Sessions) error {
+func (clients *Clients) RmCli(cli *Client, sessions *Sessions, byeMsg *string) error {
 	cliExists := WOExists[Client](cli, *clients)
 	if !cliExists {
 		return errors.New("client connection doesn't exist")
-	} else {
-		// Removes the client from slice
-		for i, eachCli := range *clients {
-			if eachCli == cli {
-				*clients = append((*clients)[:i], (*clients)[i+1:]...)
-				break
-			}
-		}
-		// Removes any session asociated to the client
-		for i, eachSession := range *sessions {
-			if eachSession.Client == cli {
-				*sessions = append((*sessions)[:i], (*sessions)[i+1:]...)
-				break
-			}
-		}
-		(**cli).Close() // <- Closes the connection
-		return nil
 	}
+	// Removes the client from slice
+	for i, eachCli := range *clients {
+		if eachCli == cli {
+			*clients = append((*clients)[:i], (*clients)[i+1:]...)
+			break
+		}
+	}
+	// Removes any session asociated to the client
+	for i, eachSession := range *sessions {
+		if eachSession.Client == cli {
+			*sessions = append((*sessions)[:i], (*sessions)[i+1:]...)
+			break
+		}
+	}
+
+	// Writing byeMsg
+	if byeMsg != nil {
+		if err := (**cli).WriteMessage(websocket.TextMessage, []byte(*byeMsg)); err != nil {
+			return err
+		}
+	}
+
+	return (**cli).Close() // <- Closes the connection
+}
+
+func (sessions Sessions) GetSessions() string {
+	if len(sessions) < 1 {
+		return "there aren't any sessions active"
+	}
+	listOfSessions := "sessions:\n"
+	for _, eachSession := range sessions {
+		listOfSessions += eachSession.User.Username + " - " + (**eachSession.Client).RemoteAddr().String() + "\n"
+	}
+	return listOfSessions
 }
 
 func (sessions *Sessions) AddSession(s *Session, clients Clients) error {

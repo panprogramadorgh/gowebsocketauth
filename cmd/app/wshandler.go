@@ -27,7 +27,11 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// When the handler function ends the connection it's been close
 	defer func() {
-		if err := clients.RmCli(client, &sessions); err != nil {
+		// Si el cliente no existe no se molesta en intentar eliminarlo para que no salga un error
+		if !types.WOExists[types.Client](client, clients) {
+			return
+		}
+		if err := clients.RmCli(client, &sessions, nil); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -50,6 +54,7 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 			cmdoutput, msg := HandleCommand(command, client)
 
 			var errWhenWritingMsg error = nil
+			var rmclient bool = false
 			switch cmdoutput {
 			case CmdOutput.PrivateMessage:
 				if err := (**client).WriteMessage(websocket.TextMessage, []byte("OK "+msg)); err != nil {
@@ -61,12 +66,17 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 						errWhenWritingMsg = err
 					}
 				}
+			case CmdOutput.RemoveClient:
+				rmclient = true // If the cmdoutput is to remove client, rmclient turn true and the infinite loop ends
 			case CmdOutput.Error:
 				if err := (**client).WriteMessage(websocket.TextMessage, []byte("ER "+msg)); err != nil {
 					errWhenWritingMsg = err
 				}
 			}
 
+			if rmclient {
+				break
+			}
 			if errWhenWritingMsg != nil {
 				fmt.Println(errWhenWritingMsg)
 				break

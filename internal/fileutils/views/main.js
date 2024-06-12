@@ -15,13 +15,22 @@ websocket.onmessage = function (event) {
   }
 };
 
-sendMsg.addEventListener("click", function () {
+sendMsg.addEventListener("click", sendMessage);
+msg.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") sendMessage()
+})
+
+function sendMessage() {
   if (websocket.readyState === websocket.CLOSED)
-    return window.alert("Connection is clossed");
+    return window.alert("Connection is clossed. Reload the page to re-connect");
   const message = msg.value;
   if (message) {
-    websocket.send(message);
+    // Clearing the screen remainds on the client
+    if (message === "/clear") {
+      output.innerHTML = ""
+    } else {
+      websocket.send(message);
+    }
     msg.value = "";
-    return;
   }
-});
+}

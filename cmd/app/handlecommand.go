@@ -4,22 +4,23 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gorilla/websocket"
 	types "github.com/panprogramadorgh/gowebsocketauth/internal/typesutils"
 )
 
 var CmdOutput types.CmdOutputStatus = types.CmdOutputStatus{
-	PrivateMessage: 0, PublicMessage: 1, Error: 2,
+	PrivateMessage: 0, PublicMessage: 1, RemoveClient: 2, Error: 3,
 }
 
 func HandleCommand(command string, client *types.Client) (int, string) {
 	if command == "exit" {
 		/* Command used for closing the session and the connection */
 		outputmsg := "[server]: you have closed the connection"
-		if err := clients.RmCli(client, &sessions); err != nil {
+		if err := clients.RmCli(client, &sessions, &outputmsg); err != nil {
 			outputmsg := "[server]: " + err.Error()
 			return CmdOutput.Error, outputmsg
 		}
-		return CmdOutput.PrivateMessage, outputmsg
+		return CmdOutput.RemoveClient, outputmsg
 	} else if command == "list" {
 		/* Command used for showing all the client connections */
 		outputmsg := clients.GetClients()
@@ -84,7 +85,7 @@ func HandleCommand(command string, client *types.Client) (int, string) {
 		// Lists all the sessions
 		outputmsg := "[server]: sessions:\n"
 		for _, eachSession := range sessions {
-			outputmsg += fmt.Sprintf("%s - %v\n", eachSession.User.Username, (**eachSession.Client).RemoteAddr())
+			outputmsg += fmt.Sprintf("%s - %v\n", eachSession.User.Username, (**eachSession.Client).RemoteAddr().String())
 		}
 		return CmdOutput.PrivateMessage, outputmsg
 	} else if strings.Split(command, " ")[0] == "register" {
@@ -131,6 +132,66 @@ func HandleCommand(command string, client *types.Client) (int, string) {
 
 		return CmdOutput.PublicMessage, outputmsg
 
+	} else if strings.Split(command, " ")[0] == "murder" {
+		args := strings.Split(command, " ")
+		if len(args) != 3 {
+			outputmsg := "[server]: invalid command"
+			return CmdOutput.Error, outputmsg
+		}
+		usrname := args[1]
+		passwd := args[2]
+
+		if sessions.SessionExistsPerUsrname(usrname) {
+			outputmsg := "[server]: cannot murder user with session active"
+			return CmdOutput.Error, outputmsg
+		}
+
+		authenticatedUser := users.AuthUsr(usrname, passwd)
+		if authenticatedUser != nil {
+			if err := users.RmUsr(authenticatedUser); err != nil {
+				return CmdOutput.Error, "[server]: " + err.Error()
+			}
+			outputmsg := "[server]: user murdered successfully"
+			return CmdOutput.PrivateMessage, outputmsg
+		}
+		outputmsg := "[server]: invalid credentials"
+		return CmdOutput.Error, outputmsg
+	} else if command == "whoami" {
+		currentSession := sessions.FindSessionPerCli(client)
+		if currentSession == nil {
+			outputmsg := "[server]: you are not logged in"
+			return CmdOutput.Error, outputmsg
+		}
+		outputmsg := "[server]: you are " + currentSession.User.Username
+		return CmdOutput.PrivateMessage, outputmsg
+	} else if strings.Split(command, " ")[0] == "tell" {
+		currentSession := sessions.FindSessionPerCli(client)
+		if currentSession == nil {
+			outputmsg := "[server]: you are not logged in"
+			return CmdOutput.Error, outputmsg
+		}
+
+		args := strings.Split(command, " ")
+		if len(args) < 3 {
+			outputmsg := "[server]: invalid command"
+			return CmdOutput.Error, outputmsg
+		}
+
+		usrReceiverName := args[1]
+		msg := fmt.Sprintf("[%s tell you]: %s", currentSession.User.Username, strings.Join(args[2:], " "))
+
+		usr := sessions.FindSessionPerUsrname(usrReceiverName)
+		if usr == nil {
+			outputmsg := "[server]: " + usrReceiverName + " doesn't have a session"
+			return CmdOutput.Error, outputmsg
+		}
+
+		if err := (**usr.Client).WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+			return CmdOutput.Error, "[server]: " + err.Error()
+		}
+
+		outputmsg := "[server]: message has been sent to " + usrReceiverName
+		return CmdOutput.PrivateMessage, outputmsg
 	} else {
 		// The command doesn't exist
 		outputmsg := "[server]: unknown command"
