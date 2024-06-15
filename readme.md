@@ -12,7 +12,23 @@ Algunas caracteristicas de este servidor son:
 
 ## Iniciar proyecto
 
-Para iniciar el proyecto en primer lugar es necesario disponer una maquina con la ultima version de GO.
+### Contenedor docker (la mas rapida)
+
+Si disponemos de docker instalado en nuestra maquina seria tan sencillo como ejecutar el docker compose para generar un contenedor de la aplicacion.
+
+```bash
+cd gowebsocketauth
+docker compose up
+```
+
+Para desmantelar el contenedor ejecutar:
+```bash
+docker compose down
+```
+
+### Instalar herramientas en OS anfitrion (estandard)
+
+Para iniciar el proyecto en primer lugar es necesario disponer una maquina con la ultima version de [GO](https://go.dev/).
 
 Teniendo el compilador de GO instalado nos dirigiremos sobre la carpeta del proyecto con `cd gowebsocketauth` y compilaremos el programa ejecutando `go build -o gowebsocketauth cmd/app/*.go`. Esto ultimo compilara todos los ficheros de go del paquete main. Es importante tener en cuenta que si estamos en windows el nombre del programa debera tener el sufijo `.exe` para la extension del programa.
 
